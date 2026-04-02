@@ -1,11 +1,11 @@
 import time
 import asyncio
-from kurigram import Client, filters
+from pyrogram import Client, filters
 import platform
 import os
 import shutil
 import logging
-from kurigram.types import BotCommand
+from pyrogram.types import BotCommand
 from info import ADMINS, Bot_cmds
 
 logging.basicConfig(level=logging.INFO)
