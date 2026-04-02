@@ -16,7 +16,7 @@ from PIL import Image
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 # --- STEP 2: Kurigram Imports (Replacing Pyrogram/Hydrogram) ---
-from kurigram import Client, idle, __version__
+from pyrogram import Client, idle, __version__
 from kurigram.raw.all import layer
 from kurigram.errors import FloodWait
 import kurigram.utils
