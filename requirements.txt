@@ -1,41 +1,43 @@
-pyrofork==2.3.45
-tgcrypto-pyrofork
-pymongo==4.13.2
+# --- Core Engine (Kurigram) ---
+kurigram
+tgcrypto
+uvloop
 motor==3.7.1
+pymongo==4.13.2
 marshmallow<4.0.0
 umongo
+
+# --- Web & Networking ---
+aiohttp
 requests
 bs4
-shortzy
-datetime
+aiofiles
+dnspython==2.7.0
+ujson
+wget
+
+# --- Tools & Utilities ---
 pytz
-aiohttp
-
-
-
-# Other tools
-opencv-python-headless==4.8.1.78
-python-dotenv==0.21.1
-PyLeaves==1.0.2
+datetime
 humanize
 Pillow
 psutil
 numpy
 wheel
-ujson
-wget
-aiofiles
-dnspython==2.7.0
+python-dotenv==0.21.1
 python-decouple
-ffmpeg-python==0.2.0
 jinja2
 apscheduler
-pyshorteners
-pyromod
 colorama
 fuzzywuzzy
 Levenshtein==0.24.0
 
+# --- Media & Extra ---
+opencv-python-headless==4.8.1.78
+ffmpeg-python==0.2.0
+shortzy
+pyshorteners
+PyLeaves==1.0.2
 
-# Git-based Packages
+# --- Git-based Packages ---
 git+https://github.com/Joelkb/cinemagoer
