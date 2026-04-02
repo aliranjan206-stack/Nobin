@@ -6,9 +6,9 @@ from info import *
 from utils import get_seconds, temp
 from database.users_chats_db import db 
 import asyncio
-from pyrogram import Client, filters 
-from pyrogram.errors.exceptions.bad_request_400 import MessageTooLong
-from pyrogram.types import *
+from kurigram import Client, filters 
+from kurigram.errors.exceptions.bad_request_400 import MessageTooLong
+from kurigram.types import *
 
 
 @Client.on_message(filters.command("remove_premium") & filters.user(ADMINS))
