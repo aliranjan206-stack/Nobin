@@ -1,68 +1,67 @@
-import logging
+Import logging
+import logging.config
 import asyncio
 import uvloop
-from pyrogram import Client, types
+from pyrogram import Client
+from pyrogram import types
 from typing import Union, Optional, AsyncGenerator
+from aiohttp import web
 from info import *
 
-# --- Logging Setup ---
+# --- Logging Setup (Render Fix: Logs ko short rakhne ke liye) ---
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logging.getLogger("pyrogram").setLevel(logging.ERROR)
-logging.getLogger("uvloop").setLevel(logging.WARNING)
+logging.getLogger("kurigram").setLevel(logging.ERROR)
+logging.getLogger("aiohttp").setLevel(logging.ERROR)
+logging.getLogger("imdbpy").setLevel(logging.ERROR)
 
 # --- Loop Policy Setup ---
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class dreamcinezoneXBot(Client):
     def __init__(self):
-        # Pass all arguments to the parent Client class
         super().__init__(
-            name="dreamxbotz",  # Using a string name for the session
+            name=SESSION,
             api_id=API_ID,
             api_hash=API_HASH,
             bot_token=BOT_TOKEN,
-            workers=min(32, (os.cpu_count() or 1) + 4), # Optimized worker count
+            workers=60,
             plugins={"root": "plugins"},
-            sleep_threshold=15, # Increased threshold to handle FloodWait better
+            sleep_threshold=5,
         )
-        self.username = None # Will be set on start
 
     async def iter_messages(
         self,
         chat_id: Union[int, str],
         limit: int,
         offset: int = 0,
-    ) -> AsyncGenerator["types.Message", None]:
+    ) -> Optional[AsyncGenerator["types.Message", None]]:
         """
-        Optimized message iterator for Kurigram/Pyrogram.
-        Uses get_messages to fetch chunks based on message IDs.
+        Kurigram optimized message iterator.
+        Sequentially iterate through chat messages.
         """
         current = offset
-        while current < limit:
-            # Determine how many messages to fetch in this batch (Max 200)
-            to_fetch = min(200, limit - current)
+        while True:
+            new_diff = min(200, limit - current)
+            if new_diff <= 0:
+                return
             
-            # Generate a list of message IDs for this chunk
-            ids = [i for i in range(current, current + to_fetch)]
+            # Fetching messages in chunks for efficiency
+            messages = await self.get_messages(
+                chat_id, 
+                list(range(current, current + new_diff + 1))
+            )
             
-            try:
-                # get_messages returns a list of messages
-                messages = await self.get_messages(chat_id, ids)
-                
-                for message in messages:
-                    yield message
-                    current += 1
-                    
-            except Exception as e:
-                logging.error(f"Error in iter_messages: {e}")
-                break
-
-# Initialize the single client instance
+            for message in messages:
+                yield message
+                current += 1
+      
+# Client instance initialize karein
 dreamxbotz = dreamcinezoneXBot()
 
-# For managing multiple user-clients (if needed for your bypass logic)
 multi_clients = {}
 work_loads = {}
+
+# Fix according to pyrogram
