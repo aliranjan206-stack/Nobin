@@ -12,17 +12,16 @@ from datetime import date, datetime
 from aiohttp import web
 from PIL import Image
 
-# --- STEP 1: Loop & Library Setup ---
+# --- STEP 1: Loop Policy Setup (Must be before Client imports) ---
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+# --- STEP 2: Kurigram Imports (Replacing Pyrogram/Hydrogram) ---
 from kurigram import Client, idle, __version__
 from kurigram.raw.all import layer
 from kurigram.errors import FloodWait
 import kurigram.utils
 
-# Image pixel limit fix
-Image.MAX_IMAGE_PIXELS = 500_000_000
-
-# Database & Info Imports
+# Database & Config Imports
 from database.ia_filterdb import Media, Media2
 from database.users_chats_db import db
 from info import *
@@ -33,9 +32,13 @@ from dreamxbotz.Bot import dreamxbotz
 from dreamxbotz.util.keepalive import ping_server
 from dreamxbotz.Bot.clients import initialize_clients
 
-# --- STEP 2: Logging Control (Render Fix) ---
-logging.basicConfig(level=logging.INFO)
+# Image Pixel Limit
+Image.MAX_IMAGE_PIXELS = 500_000_000
+
+# Logging Configuration
+logging.config.fileConfig('logging.conf')
 logging.getLogger("kurigram").setLevel(logging.ERROR)
+logging.getLogger("imdbpy").setLevel(logging.ERROR)
 logging.getLogger("aiohttp").setLevel(logging.ERROR)
 logging.getLogger("pymongo").setLevel(logging.WARNING)
 
@@ -50,48 +53,44 @@ async def dreamxbotz_start():
     dreamxbotz.username = "@" + bot_info.username
     
     await initialize_clients()
-
-    # --- Plugin Loading (Improved) ---
-    plugins_dir = Path("plugins")
-    for file in sorted(plugins_dir.rglob("*.py")):
-        if file.name == "__init__.py":
-            continue
-        
-        plugin_name = file.stem
+    
+    # Plugin Loader Logic
+    ppath = "plugins/*.py"
+    files = glob.glob(ppath)
+    for name in files:
+        plugin_name = Path(name).stem
         import_path = f"plugins.{plugin_name}"
-        
         try:
-            spec = importlib.util.spec_from_file_location(import_path, file)
+            spec = importlib.util.spec_from_file_location(import_path, name)
             load = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(load)
             sys.modules[import_path] = load
-            print(f"✅ Imported => {plugin_name}")
+            print(f"DreamxBotz Imported => {plugin_name}")
         except Exception as e:
-            print(f"❌ Failed to load {plugin_name}: {e}")
+            print(f"❌ Plugin Error {plugin_name}: {e}")
 
     if ON_HEROKU:
         asyncio.create_task(ping_server()) 
 
-    # Database setup
+    # Database Initialization
     try:
         b_users, b_chats = await db.get_banned()
         temp.BANNED_USERS, temp.BANNED_CHATS = b_users, b_chats
         await Media.ensure_indexes()
         if MULTIPLE_DB:
             await Media2.ensure_indexes()
-            print("Multiple DB: ON")
-    except:
-        pass
+    except: pass
 
-    # Bot identity setup
+    # Bot Metadata
     temp.ME = bot_info.id
     temp.U_NAME = bot_info.username
     temp.B_NAME = bot_info.first_name
     temp.B_LINK = bot_info.mention
+    dreamxbotz.username = '@' + bot_info.username
     
     asyncio.create_task(check_expired_premium(dreamxbotz))
     
-    # Restart Message logic
+    # Restart Log
     tz = pytz.timezone('Asia/Kolkata')
     time_now = datetime.now(tz).strftime("%H:%M:%S %p")
     if LOG_CHANNEL:
@@ -100,20 +99,17 @@ async def dreamxbotz_start():
                 chat_id=LOG_CHANNEL, 
                 text=script.RESTART_TXT.format(temp.B_LINK, date.today(), time_now)
             )
-        except:
-            pass
+        except: pass
 
-    # --- Web Server for Render Port Binding ---
+    # Web Server Setup (Render Port Binding)
     try:
-        web_app = await web_server()
-        runner = web.AppRunner(web_app)
-        await runner.setup()
-        await web.TCPSite(runner, "0.0.0.0", PORT).start()
-    except:
-        pass
+        app = web.AppRunner(await web_server())
+        await app.setup()
+        await web.TCPSite(app, "0.0.0.0", PORT).start()
+    except: pass
 
     asyncio.create_task(keep_alive())
-    print(f"✅ {bot_info.first_name} is LIVE!")
+    print(f"✅ {bot_info.first_name} is LIVE on Kurigram!")
     await idle()
     
 if __name__ == '__main__':
@@ -122,4 +118,4 @@ if __name__ == '__main__':
     except FloodWait as e:
         time.sleep(e.value)
     except KeyboardInterrupt:
-        logging.info('Service Stopped Bye 👋')
+        print('Service Stopped Bye 👋')
