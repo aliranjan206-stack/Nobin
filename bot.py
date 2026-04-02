@@ -7,6 +7,7 @@ import asyncio
 import uvloop
 import time
 import pytz
+import os
 from pathlib import Path
 from datetime import date, datetime
 from aiohttp import web
@@ -15,7 +16,7 @@ from PIL import Image
 # --- STEP 1: Loop Policy Setup (Must be before Client imports) ---
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-# --- STEP 2: Kurigram Imports (Replacing Pyrogram/Hydrogram) ---
+# --- STEP 2: Kurigram Imports ---
 from pyrogram import Client, idle, __version__
 from pyrogram.raw.all import layer
 from pyrogram.errors import FloodWait
@@ -47,8 +48,19 @@ pyrogram.utils.MIN_CHANNEL_ID = -1009147483647
 
 async def dreamxbotz_start():
     print('\n🚀 Initializing DreamxBotz on Kurigram...')
-    await dreamxbotz.start()
     
+    # Start the Web Server FIRST to satisfy Render's Port Binding check immediately
+    try:
+        app = web.AppRunner(await web_server())
+        await app.setup()
+        bind_address = "0.0.0.0"
+        await web.TCPSite(app, bind_address, PORT).start()
+        print(f"📡 Web Server started on port {PORT}")
+    except Exception as e:
+        print(f"⚠️ Web Server Failed: {e}")
+
+    # Start the Bot Client
+    await dreamxbotz.start()
     bot_info = await dreamxbotz.get_me()
     dreamxbotz.username = "@" + bot_info.username
     
@@ -79,14 +91,14 @@ async def dreamxbotz_start():
         await Media.ensure_indexes()
         if MULTIPLE_DB:
             await Media2.ensure_indexes()
-    except: pass
+    except Exception:
+        pass
 
     # Bot Metadata
     temp.ME = bot_info.id
     temp.U_NAME = bot_info.username
     temp.B_NAME = bot_info.first_name
     temp.B_LINK = bot_info.mention
-    dreamxbotz.username = '@' + bot_info.username
     
     asyncio.create_task(check_expired_premium(dreamxbotz))
     
@@ -99,24 +111,26 @@ async def dreamxbotz_start():
                 chat_id=LOG_CHANNEL, 
                 text=script.RESTART_TXT.format(temp.B_LINK, date.today(), time_now)
             )
-        except: 
+        except Exception: 
             pass
-
-    # Web Server Setup (Render Port Binding)
-    try:
-        app = web.AppRunner(await web_server())
-        await app.setup()
-        await web.TCPSite(app, "0.0.0.0", PORT).start()
-    except: pass
 
     asyncio.create_task(keep_alive())
     print(f"✅ {bot_info.first_name} is LIVE on Kurigram!")
+    
+    # Keep the loop running
     await idle()
     
 if __name__ == '__main__':
+    # Use the existing loop to avoid the "attached to a different loop" error
+    loop = asyncio.get_event_loop()
     try:
-        asyncio.run(dreamxbotz_start())
+        loop.run_until_complete(dreamxbotz_start())
     except FloodWait as e:
+        print(f"🛡️ FloodWait detected! Sleeping for {e.value}s")
         time.sleep(e.value)
     except KeyboardInterrupt:
-        print('Service Stopped Bye 👋')
+        print('\nService Stopped Bye 👋')
+    finally:
+        # Graceful shutdown of the loop
+        if loop.is_running():
+            loop.stop()
